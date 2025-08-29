@@ -1,5 +1,6 @@
 package one.digitalinnovation.gof.service.impl;
 
+import java.util.List;
 import java.util.Optional;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -9,6 +10,7 @@ import one.digitalinnovation.gof.model.Cliente;
 import one.digitalinnovation.gof.model.ClienteRepository;
 import one.digitalinnovation.gof.model.Endereco;
 import one.digitalinnovation.gof.model.EnderecoRepository;
+import one.digitalinnovation.gof.patterns.observer.ClienteObserver;
 import one.digitalinnovation.gof.service.ClienteService;
 import one.digitalinnovation.gof.service.ViaCepService;
 
@@ -16,6 +18,8 @@ import one.digitalinnovation.gof.service.ViaCepService;
  * Implementação da <b>Strategy</b> {@link ClienteService}, a qual pode ser
  * injetada pelo Spring (via {@link Autowired}). Com isso, como essa classe é um
  * {@link Service}, ela será tratada como um <b>Singleton</b>.
+ * 
+ * Também implementa o padrão <b>Observer</b> para notificar mudanças.
  * 
  * @author falvojr
  */
@@ -29,6 +33,10 @@ public class ClienteServiceImpl implements ClienteService {
 	private EnderecoRepository enderecoRepository;
 	@Autowired
 	private ViaCepService viaCepService;
+	
+	// Observer: Lista de observadores
+	@Autowired
+	private List<ClienteObserver> observers;
 	
 	// Strategy: Implementar os métodos definidos na interface.
 	// Facade: Abstrair integrações com subsistemas, provendo uma interface simples.
@@ -49,6 +57,8 @@ public class ClienteServiceImpl implements ClienteService {
 	@Override
 	public void inserir(Cliente cliente) {
 		salvarClienteComCep(cliente);
+		// Notificar observadores
+		notificarClienteCriado(cliente);
 	}
 
 	@Override
@@ -57,6 +67,8 @@ public class ClienteServiceImpl implements ClienteService {
 		Optional<Cliente> clienteBd = clienteRepository.findById(id);
 		if (clienteBd.isPresent()) {
 			salvarClienteComCep(cliente);
+			// Notificar observadores
+			notificarClienteAtualizado(cliente);
 		}
 	}
 
@@ -78,6 +90,19 @@ public class ClienteServiceImpl implements ClienteService {
 		cliente.setEndereco(endereco);
 		// Inserir Cliente, vinculando o Endereco (novo ou existente).
 		clienteRepository.save(cliente);
+	}
+	
+	// Métodos para notificar observadores
+	private void notificarClienteCriado(Cliente cliente) {
+		if (observers != null) {
+			observers.forEach(observer -> observer.clienteCriado(cliente));
+		}
+	}
+	
+	private void notificarClienteAtualizado(Cliente cliente) {
+		if (observers != null) {
+			observers.forEach(observer -> observer.clienteAtualizado(cliente));
+		}
 	}
 
 }
